@@ -31,9 +31,9 @@
         /* Desktop-specific styles for product row to enable tabular view */
         @media (min-width: 768px) {
             .product-row-desktop-grid {
-                /* NEW 5 columns: Name, Price, Units, Discount Setup, Remove Btn */
+                /* NEW 9 Columns: Name, Price, Units, Subtotal, Discount Setup, Discount Amt, Discount %, Final Price, Remove Btn */
+                grid-template-columns: 1.8fr 1fr 0.7fr 1fr 2fr 1fr 0.8fr 1.2fr auto; 
                 display: grid;
-                grid-template-columns: 2fr 1fr 1fr 2fr auto; 
                 align-items: center;
                 gap: 1rem;
                 padding: 1rem 1.5rem;
@@ -41,12 +41,23 @@
             .product-row .mobile-only-details {
                 display: none; /* Hide stacked details on desktop */
             }
+            /* Style for the calculated outputs */
+            .calculated-output {
+                font-size: 0.9rem;
+                font-weight: 600;
+                text-align: right;
+                padding-right: 4px;
+            }
+            .calculated-output.final {
+                font-size: 1rem;
+                font-weight: 700;
+            }
         }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
 
-    <div class="max-w-6xl mx-auto"> <!-- Increased max-width slightly for better desktop experience -->
+    <div class="max-w-7xl mx-auto"> <!-- Increased max-width to fit 9 columns -->
         <header class="text-center mb-6">
             <h1 class="text-3xl font-bold text-gray-800">Discount Calculator Pro</h1>
             <p class="text-gray-500">Manage multiple products and complex discounts easily. (Responsive Layout)</p>
@@ -54,12 +65,16 @@
 
         <main class="bg-white p-6 rounded-xl container-card space-y-6">
 
-            <!-- Product List Header (Desktop Only - 5 Columns) -->
-            <div class="hidden md:grid md:grid-cols-[2fr_1fr_1fr_2fr_auto] gap-4 mb-2 p-4 border-b border-gray-300 font-semibold text-gray-600">
+            <!-- Product List Header (Desktop Only - 9 Columns) -->
+            <div class="hidden md:grid md:grid-cols-[1.8fr_1fr_0.7fr_1fr_2fr_1fr_0.8fr_1.2fr_auto] gap-4 mb-2 p-4 border-b border-gray-300 font-semibold text-gray-600">
                 <span>Product Name</span>
                 <span>Unit Price (₹)</span>
                 <span>Units</span>
+                <span class="text-right">Subtotal (₹)</span> <!-- NEW HEADER -->
                 <span class="text-center">Discount Setup</span>
+                <span class="text-right">Discount Amt (₹)</span> <!-- NEW HEADER -->
+                <span class="text-right">Discount %</span> <!-- NEW HEADER -->
+                <span class="text-right">Final Price (₹)</span>
                 <span class="w-6"></span> <!-- Spacer for delete button -->
             </div>
 
@@ -165,7 +180,7 @@
                 <div id="product-${id}" 
                      class="product-row bg-white border border-gray-200 rounded-xl shadow-sm space-y-3 p-4 md:p-0 md:border-0 md:shadow-none md:space-y-0 md:border-t md:first:border-t-0 product-row-desktop-grid">
                     
-                    <!-- 1. Product Name (Mobile Full Row, Desktop Column 1) -->
+                    <!-- 1. Product Name (Desktop Column 1) -->
                     <div class="md:col-span-1">
                         <label class="block">
                             <span class="text-xs font-medium text-gray-500 md:hidden">Product Name</span>
@@ -181,7 +196,7 @@
                         </label>
                     </div>
 
-                    <!-- 2. Unit Price (Mobile Column 1 of 2, Desktop Column 2) -->
+                    <!-- 2. Unit Price (Desktop Column 2) -->
                     <div class="md:col-span-1 md:block">
                         <label class="block">
                             <span class="text-xs font-medium text-gray-500 md:hidden">Unit Price (₹)</span>
@@ -198,7 +213,7 @@
                         </label>
                     </div>
 
-                    <!-- 3. Units (Mobile Column 2 of 2, Desktop Column 3) -->
+                    <!-- 3. Units (Desktop Column 3) -->
                     <div class="md:col-span-1 md:block">
                         <label class="block">
                             <span class="text-xs font-medium text-gray-500 md:hidden">Units</span>
@@ -215,7 +230,14 @@
                         </label>
                     </div>
                     
-                    <!-- 4. Discount Setup (Mobile Full Row, Desktop Column 4 - uses its own grid) -->
+                    <!-- NEW: 4. Subtotal (Desktop Column 4) -->
+                    <div class="hidden md:block md:col-span-1">
+                        <div class="calculated-output text-gray-700" id="subtotal-display-desktop-${id}">
+                            ₹${subtotal.toFixed(2)}
+                        </div>
+                    </div>
+
+                    <!-- 5. Discount Setup (Desktop Column 5 - uses its own grid) -->
                     <div class="md:col-span-1 grid grid-cols-2 gap-3">
                         <!-- Discount Type Selector -->
                         <div class="col-span-1">
@@ -247,8 +269,29 @@
                             />
                         </div>
                     </div>
+                    
+                    <!-- NEW: 6. Discount Amount (Desktop Column 6) -->
+                    <div class="hidden md:block md:col-span-1">
+                        <div class="calculated-output text-red-600" id="discount-amount-display-desktop-${id}">
+                            -₹${discountAmount.toFixed(2)}
+                        </div>
+                    </div>
 
-                    <!-- 5. Remove Button (Mobile/Desktop Column 5) -->
+                    <!-- NEW: 7. Discount Percentage (Desktop Column 7) -->
+                    <div class="hidden md:block md:col-span-1">
+                        <div class="calculated-output text-red-600" id="discount-percent-display-desktop-${id}">
+                            ${discountPercentage.toFixed(2)}%
+                        </div>
+                    </div>
+
+                    <!-- 8. Product Final Price (Desktop Column 8) -->
+                    <div class="hidden md:block md:col-span-1">
+                        <div class="calculated-output final text-green-600" id="final-price-display-desktop-${id}">
+                            ₹${discountedPrice.toFixed(2)}
+                        </div>
+                    </div>
+
+                    <!-- 9. Remove Button (Mobile/Desktop Column 9) -->
                     <div class="md:col-span-1 flex justify-end md:justify-center">
                         <button
                             data-id="${id}"
@@ -276,7 +319,7 @@
                             <span class="font-medium">Discount %:</span>
                             <span id="discount-percent-display-mobile-${id}" class="font-semibold text-red-600">${discountPercentage.toFixed(2)}%</span>
                         </div>
-                        <!-- CHANGED: Label is now "Product Final Price" -->
+                        <!-- Displayed Final Price for Mobile-Only -->
                         <div class="text-lg font-bold text-green-600 flex justify-between pt-1 border-t border-gray-300">
                             <span class="text-gray-800">Product Final Price:</span>
                             <span id="final-price-display-${id}">₹${discountedPrice.toFixed(2)}</span>
@@ -296,7 +339,7 @@
 
             const format = (value) => value.toFixed(2);
 
-            // Update mobile elements
+            // --- MOBILE Updates ---
             const subtotalMobileEl = document.getElementById(`subtotal-display-mobile-${id}`);
             if (subtotalMobileEl) subtotalMobileEl.textContent = `₹${format(product.subtotal)}`;
             
@@ -306,9 +349,21 @@
             const discountPercentMobileEl = document.getElementById(`discount-percent-display-mobile-${id}`);
             if (discountPercentMobileEl) discountPercentMobileEl.textContent = `${format(product.discountPercentage)}%`;
             
-            // Update the final price element inside the mobile summary
             const finalPriceEl = document.getElementById(`final-price-display-${id}`);
             if (finalPriceEl) finalPriceEl.textContent = `₹${format(product.discountedPrice)}`;
+
+            // --- DESKTOP Updates (NEW) ---
+            const subtotalDesktopEl = document.getElementById(`subtotal-display-desktop-${id}`);
+            if (subtotalDesktopEl) subtotalDesktopEl.textContent = `₹${format(product.subtotal)}`;
+
+            const discountAmountDesktopEl = document.getElementById(`discount-amount-display-desktop-${id}`);
+            if (discountAmountDesktopEl) discountAmountDesktopEl.textContent = `-₹${format(product.discountAmount)}`;
+
+            const discountPercentDesktopEl = document.getElementById(`discount-percent-display-desktop-${id}`);
+            if (discountPercentDesktopEl) discountPercentDesktopEl.textContent = `${format(product.discountPercentage)}%`;
+            
+            const finalPriceDesktopEl = document.getElementById(`final-price-display-desktop-${id}`);
+            if (finalPriceDesktopEl) finalPriceDesktopEl.textContent = `₹${format(product.discountedPrice)}`;
         }
 
 
@@ -359,7 +414,7 @@
             }
 
             // Update display elements without re-rendering inputs
-            updateProductDisplay(id);
+            updateProductDisplay(id); 
             updateGrandTotals(); // Recalculate and update overall summary
         }
 
@@ -416,7 +471,7 @@ ${index + 1}. *${product.name || 'Untitled Product'}*
     _Discount Applied:_
     Amount: *-₹${formatPrice(product.discountAmount)}*
     Percentage: *${formatPercent(product.discountPercentage)}%*
-    *Product Final Price: ₹${formatPrice(product.discountedPrice)}*`; // Updated label
+    *Product Final Price: ₹${formatPrice(product.discountedPrice)}*`; 
             }).join('\n');
 
             const summary = `
@@ -454,7 +509,7 @@ ${index + 1}. ${product.name || 'Untitled Product'}
     Discount Applied:
     Amount: -₹${formatPrice(product.discountAmount)}
     Percentage: ${formatPercent(product.discountPercentage)}%
-    Product Final Price: ₹${formatPrice(product.discountedPrice)}`; // Updated label
+    Product Final Price: ₹${formatPrice(product.discountedPrice)}`; 
             }).join('\n');
 
             const summary = `
