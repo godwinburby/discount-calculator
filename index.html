@@ -561,6 +561,9 @@
                 currentQuoteName = quoteName;
                 updateDatalist();
                 updateDeleteButtonState(quoteName);
+                
+                // --- NEW BEHAVIOR: Clear fields after successful save ---
+                clearQuote(); 
                 showMessage(`Quote "${quoteName}" saved successfully!`, 'success');
 
             } catch (e) {
@@ -622,7 +625,7 @@
                     
                     // Clear the current display and reset ID counter
                     products = [];
-                    nextProductId = 1; // <-- FIX: Reset ID counter
+                    nextProductId = 1; 
                     quoteNameInputEl.value = '';
                     currentQuoteName = '';
                     updateDatalist();
@@ -644,11 +647,15 @@
          */
         function clearQuote() {
             products = [];
-            nextProductId = 1; // <-- FIX: Reset ID counter
+            nextProductId = 1; // Reset ID counter
             quoteNameInputEl.value = '';
             currentQuoteName = '';
             updateDeleteButtonState('');
-            showMessage("Quote cleared. Ready for a new quote!", 'info');
+            // NOTE: showMessage is now called by saveQuoteLocally for save events.
+            // When manually cleared, we show a message too.
+            if (event && event.currentTarget.id === 'clear-quote-btn') {
+                 showMessage("Quote cleared. Ready for a new quote!", 'info');
+            }
             addProduct(true); // Add a default product starting with 0 price
         }
         
@@ -726,7 +733,7 @@
          * @param {boolean} [startEmpty=false] - If true, sets initial name/price to 0 and name to 'Product 1'.
          */
         function addProduct(startEmpty = false) {
-            // FIX: Always set initial price to 0.00 as requested
+            // Always set initial price to 0.00 as requested
             const initialPrice = 0.00; 
             const initialDiscount = 0;
             
@@ -768,14 +775,14 @@
             products = products.filter(p => p.id !== id);
             // If all products are deleted, start a new blank one
             if (products.length === 0) {
-                nextProductId = 1; // <-- FIX: Reset ID counter when all are gone
+                nextProductId = 1; // Reset ID counter when all are gone
                 addProduct(true);
             } else {
                 updateUI();
             }
         }
 
-        // --- Copy/Share Functions (Unchanged) ---
+        // --- Copy/Share Functions (Modified generatePlainTextQuote usage) ---
         
         function generateWhatsappSummaryText() {
             const totals = updateGrandTotals(); 
@@ -783,6 +790,7 @@
                 const formatPrice = (value) => value.toFixed(2);
                 const formatPercent = (value) => value.toFixed(2);
 
+                // Use * for bold and _ for italics in WhatsApp markdown
                 return `
 ${index + 1}. *${product.name || 'Untitled Product'}*
     Unit Price: ₹${formatPrice(product.unitPrice)}
@@ -809,7 +817,9 @@ Total Savings: *-₹${totals.totalDiscount.toFixed(2)}*
 *NET PAYABLE AMOUNT: ₹${totals.grandTotal.toFixed(2)}*`;
             return summary.trim();
         }
-
+        
+        // This function is no longer used for copying, replaced by generateWhatsappSummaryText
+        // but kept for completeness in case it was used elsewhere.
         function generatePlainTextQuote() {
             const totals = updateGrandTotals(); 
             const productDetails = products.map((product, index) => {
@@ -850,7 +860,9 @@ NET PAYABLE AMOUNT: ₹${totals.grandTotal.toFixed(2)}`;
         }
 
         function copyToClipboard() {
-            const summaryText = generatePlainTextQuote();
+            // --- MODIFIED: Use the rich text summary for copying ---
+            const summaryText = generateWhatsappSummaryText(); 
+            // --------------------------------------------------------
             const copyButton = document.getElementById('copy-quote-btn');
 
             const tempTextArea = document.createElement('textarea');
