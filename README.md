@@ -1,29 +1,44 @@
+
 # Discount Calculator Pro
 
-This is a single-file, mobile-friendly web application designed to quickly calculate discounted prices for multiple products. It supports various discount methods (percentage, fixed amount, or specifying a final price) and generates a formatted, shareable price quote summary.
+This is a powerful and responsive client-side tool designed to calculate prices with complex discounts across multiple products, featuring local storage management and rich text export capabilities.
 
-## Features
+## 🌟 Key Features
 
-**Multi-Product Support:** Add, calculate, and remove multiple products in a single transaction.
+### 1. Advanced Product Calculation
 
-**Flexible Discounting:** Choose between Percentage (%), Fixed Amount (₹), or setting a Final Price.
+-   **Multi-Product Support:** Easily add and manage a list of products.
+    
+-   **Flexible Discounting:** Apply discounts per product using one of three methods:
+    
+    -   **Percentage (`% Disc`):** Apply a percentage reduction to the subtotal.
+        
+    -   **Amount (`₹ Amt`):** Apply a fixed currency amount reduction.
+        
+    -   **Final Price (`Final ₹`):** Specify the exact final price; the discount is calculated automatically.
+        
+-   **Real-Time Totals:** The Grand Total, Total Savings, and Overall Discount Percentage are calculated instantly as you input values.
+    
 
-**Real-time Calculation:** Totals and discounts are updated instantly as you type.
+### 2. Local Quote Management (Save & Load)
 
-**WhatsApp Sharing:** Generates a summary with markdown formatting (bold, italics) optimized for chat applications like WhatsApp.
+The Quote Management section allows you to save your current product list and calculations for later retrieval, using your browser's local storage.
+|Feature  |  Action|Behavior|
+|--|--|--|
+|**Save Quote**  |  Click `💾 Save Quote`|Saves the current list under the entered Quote Name. **The screen is automatically cleared, and a success message is displayed** after a successful save.|
+|**Load Quote**|Type a saved name into the input field or select it from the dropdown.|If a saved name is detected, the corresponding product list and calculations are loaded onto the screen.|
+|**Clear Quote**|Click `✨ Clear Quote`|Clears all product inputs and the Quote Name field, preparing the screen for a new quote.|
+|**Delete Quote**|Click `🗑️ Delete Quote`|Permanently removes the named quote from local storage. This button is only enabled when a saved quote is currently loaded.|
 
-**Plain Text Copy:** Copies a clean, markdown-free version of the price quote directly to your clipboard, perfect for pasting into emails or documents.
+### 3. Sharing and Export
 
-**Responsive Design:** Optimized for use on mobile devices.
+Use the action buttons at the bottom to quickly share or copy your finalized quote.
 
-## How to Use
+-   **Copy Price Quote:** Copies the full summary, including all product details and the Grand Total, to your clipboard. The copied text uses **rich text formatting** (bold and italics) suitable for pasting into messaging apps like WhatsApp, Slack, or email, ensuring clear presentation.
+    
+-   **Share via WhatsApp:** Opens a new WhatsApp share window with the formatted quote text pre-filled, ready to send to a contact.
+    
 
-**Open the File:** Simply open the index.html file in any modern web browser (Chrome, Firefox, Safari, etc.).
+### 4. User Feedback
 
-**Add Products:** Click the "+ Add New Product" button for each item you need to include.
-
-**Enter Details:** Fill in the Product Name, Unit Price, and Units for each row.
-
-**Apply Discount:** Select the discount type and enter the corresponding value.
-
-**Share or Copy:** Click either the "Share Summary via WhatsApp" button for a formatted chat message, or the "Copy Price Quote" button for clean, plain text output.
+The application provides non-intrusive pop-up messages at the bottom of the screen to confirm key actions, such as saving, loading, or clearing a quote.
