@@ -36,8 +36,8 @@
         /* Desktop-specific styles for product row to enable tabular view */
         @media (min-width: 768px) {
             .product-row-desktop-grid {
-                /* 9 Columns: Name, Price, Units, Subtotal, Discount Setup, Discount Amt, Discount %, Final Price, Remove Btn */
-                grid-template-columns: 1.8fr 1fr 0.7fr 1fr 2fr 1fr 0.8fr 1.2fr auto; 
+                /* 10 Columns: Number, Name, Price, Units, Subtotal, Discount Setup, Discount Amt, Discount %, Final Price, Remove Btn */
+                grid-template-columns: 0.5fr 1.5fr 1fr 0.7fr 1fr 2fr 1fr 0.8fr 1.2fr auto; 
                 display: grid;
                 align-items: center;
                 gap: 1rem;
@@ -58,6 +58,33 @@
                 font-weight: 700;
             }
         }
+
+        /* Modal specific styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none; /* Controlled by JS */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            transform: scale(0.95);
+            transition: transform 0.2s ease-out;
+        }
+        .modal.open .modal-content {
+            transform: scale(1);
+        }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -70,43 +97,37 @@
 
         <main class="bg-white p-6 rounded-xl container-card space-y-6">
             
-            <!-- Quote Management Section (New) -->
+            <!-- Quote Management Section -->
             <div class="border-b pb-4 mb-4 space-y-3">
-                <h2 class="text-xl font-semibold text-gray-700">Quote Management (Local Storage)</h2>
+                <h2 class="text-xl font-semibold text-gray-700">Quote Management</h2>
                 
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <!-- Quote Name Input with Autocomplete -->
+                    <!-- Quote Name Input -->
                     <div class="sm:flex-grow">
                         <input
                             type="text"
                             id="quote-name-input"
-                            list="saved-quotes"
-                            placeholder="Type or select a Quote Name..."
+                            placeholder="Current Quote Name"
                             class="input-field w-full text-base font-medium"
-                            onchange="handleQuoteNameChange(this.value)"
-                            oninput="handleQuoteNameChange(this.value)"
+                            oninput="setCurrentQuoteName(this.value)"
                         />
-                        <datalist id="saved-quotes">
-                            <!-- Options populated by JS -->
-                        </datalist>
                     </div>
 
                     <!-- Action Buttons -->
                     <button id="save-quote-btn" onclick="saveQuoteLocally()" class="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-xl transition duration-200 shadow-md flex-shrink-0">
                         💾 Save Quote
                     </button>
-                    <!-- CLEAR BUTTON -->
                     <button id="clear-quote-btn" onclick="clearQuote()" class="w-full sm:w-auto bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-xl transition duration-200 shadow-md flex-shrink-0">
                         ✨ Clear Quote
                     </button>
-                    <!-- END CLEAR BUTTON -->
-                    <button id="delete-quote-btn" onclick="deleteQuoteLocally()" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-xl transition duration-200 shadow-md flex-shrink-0" disabled>
-                        🗑️ Delete Quote
+                    <!-- NEW: History Modal Button -->
+                    <button id="open-history-btn" onclick="openHistoryModal()" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl transition duration-200 shadow-md flex-shrink-0">
+                        📚 Quote History
                     </button>
                 </div>
             </div>
 
-            <!-- Global Tax Input (NEW) -->
+            <!-- Global Tax Input -->
             <div class="mb-6 max-w-sm mx-auto p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <label for="global-tax-input" class="block text-sm font-medium text-gray-700 mb-2">
                     Global Sales Tax / GST (%)
@@ -125,8 +146,9 @@
                 </div>
             </div>
 
-            <!-- Product List Header (Desktop Only - 9 Columns) -->
-            <div class="hidden md:grid md:grid-cols-[1.8fr_1fr_0.7fr_1fr_2fr_1fr_0.8fr_1.2fr_auto] gap-4 mb-2 p-4 border-b border-gray-300 font-semibold text-gray-600">
+            <!-- Product List Header (Desktop Only - 10 Columns) -->
+            <div class="hidden md:grid md:grid-cols-[0.5fr_1.5fr_1fr_0.7fr_1fr_2fr_1fr_0.8fr_1.2fr_auto] gap-4 mb-2 p-4 border-b border-gray-300 font-semibold text-gray-600">
+                <span>#</span> <!-- NEW COLUMN FOR PRODUCT NUMBER -->
                 <span>Product Name</span>
                 <span>Unit Price (₹)</span>
                 <span>Units</span>
@@ -171,7 +193,7 @@
                     </div>
 
                     <div class="flex justify-between text-base border-t pt-2">
-                        <span class="text-gray-600">Tax (${0}%):</span>
+                        <span class="text-gray-600">Tax (0.0%):</span>
                         <span id="tax-amount" class="font-medium text-gray-800">₹0.00</span>
                     </div>
 
@@ -210,15 +232,37 @@
         </main>
     </div>
 
+    <!-- Quote History Modal (NEW) -->
+    <div id="history-modal" class="modal">
+        <div class="modal-content w-full sm:max-w-xl">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-2xl font-bold text-gray-800">📚 Quote History</h3>
+                <button onclick="closeHistoryModal()" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <input type="text" id="history-search-input" oninput="renderHistoryList()" placeholder="Search quotes by name..." class="input-field w-full mb-4">
+
+            <div id="history-list" class="space-y-3 max-h-96 overflow-y-auto">
+                <!-- Quote list will be rendered here -->
+            </div>
+            
+            <p id="history-empty-state" class="text-center text-gray-500 mt-4 hidden">No saved quotes found.</p>
+        </div>
+    </div>
+
+
     <script>
         // Global variables provided by the canvas environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // Product state array
         let products = [];
-        let nextProductId = 1;
+        // Removed nextProductId - using UUIDs now!
         
-        // GLOBAL STATE FOR TAX (NEW)
         let globalTaxRate = 0; // Default 0%
 
         // Quote Management state
@@ -233,9 +277,14 @@
         const globalTaxInputEl = document.getElementById('global-tax-input');
         
         const quoteNameInputEl = document.getElementById('quote-name-input');
-        const savedQuotesDatalistEl = document.getElementById('saved-quotes');
-        const deleteQuoteBtnEl = document.getElementById('delete-quote-btn');
         const messageBoxEl = document.getElementById('message-box');
+        
+        // Modal Elements (NEW)
+        const historyModalEl = document.getElementById('history-modal');
+        const historyListEl = document.getElementById('history-list');
+        const historySearchInputEl = document.getElementById('history-search-input');
+        const historyEmptyStateEl = document.getElementById('history-empty-state');
+
 
         /**
          * Shows a temporary message box for user feedback (e.g., successful save).
@@ -276,19 +325,25 @@
         /**
          * Generates the HTML string for a single product row.
          */
-        function renderProductRow(product) {
+        function renderProductRow(product, index) { // ADDED INDEX
             const { id, name, unitPrice, units, discountType, discountValue, subtotal, discountedPrice, discountAmount, discountPercentage, isValid } = product;
             const format = (value) => value.toFixed(2);
             
             // Apply error class if product is invalid
             const errorClass = isValid === false ? 'input-error' : '';
+            const productNumber = index + 1; // 1-based index for display
 
             return `
                 <!-- Responsive Product Row Container -->
                 <div id="product-${id}" 
                      class="product-row bg-white border border-gray-200 rounded-xl shadow-sm space-y-3 p-4 md:p-0 md:border-0 md:shadow-none md:space-y-0 md:border-t md:first:border-t-0 product-row-desktop-grid">
                     
-                    <!-- 1. Product Name (Desktop Column 1) -->
+                    <!-- NEW: Product Number (#) (Desktop Column 1) -->
+                    <div class="hidden md:block md:col-span-1 text-center font-bold text-lg text-indigo-600">
+                        ${productNumber}.
+                    </div>
+
+                    <!-- 1. Product Name (Desktop Column 2) -->
                     <div class="md:col-span-1">
                         <label class="block">
                             <span class="text-xs font-medium text-gray-500 md:hidden">Product Name</span>
@@ -304,7 +359,7 @@
                         </label>
                     </div>
 
-                    <!-- 2. Unit Price (Desktop Column 2) -->
+                    <!-- 2. Unit Price (Desktop Column 3) -->
                     <div class="md:col-span-1 md:block">
                         <label class="block">
                             <span class="text-xs font-medium text-gray-500 md:hidden">Unit Price (₹)</span>
@@ -321,7 +376,7 @@
                         </label>
                     </div>
 
-                    <!-- 3. Units (Desktop Column 3) -->
+                    <!-- 3. Units (Desktop Column 4) -->
                     <div class="md:col-span-1 md:block">
                         <label class="block">
                             <span class="text-xs font-medium text-gray-500 md:hidden">Units</span>
@@ -338,14 +393,14 @@
                         </label>
                     </div>
                     
-                    <!-- 4. Subtotal (Desktop Column 4) -->
+                    <!-- 4. Subtotal (Desktop Column 5) -->
                     <div class="hidden md:block md:col-span-1">
                         <div class="calculated-output text-gray-700" id="subtotal-display-desktop-${id}">
                             ₹${subtotal.toFixed(2)}
                         </div>
                     </div>
 
-                    <!-- 5. Discount Setup (Desktop Column 5) -->
+                    <!-- 5. Discount Setup (Desktop Column 6) -->
                     <div class="md:col-span-1 grid grid-cols-2 gap-3">
                         <!-- Discount Type Selector -->
                         <div class="col-span-1">
@@ -378,34 +433,34 @@
                         </div>
                     </div>
                     
-                    <!-- 6. Discount Amount (Desktop Column 6) -->
+                    <!-- 6. Discount Amount (Desktop Column 7) -->
                     <div class="hidden md:block md:col-span-1">
                         <div class="calculated-output text-red-600" id="discount-amount-display-desktop-${id}">
                             -₹${discountAmount.toFixed(2)}
                         </div>
                     </div>
 
-                    <!-- 7. Discount Percentage (Desktop Column 7) -->
+                    <!-- 7. Discount Percentage (Desktop Column 8) -->
                     <div class="hidden md:block md:col-span-1">
                         <div class="calculated-output text-red-600" id="discount-percent-display-desktop-${id}">
                             ${discountPercentage.toFixed(2)}%
                         </div>
                     </div>
 
-                    <!-- 8. Product Final Price (Desktop Column 8) -->
+                    <!-- 8. Product Final Price (Desktop Column 9) -->
                     <div class="hidden md:block md:col-span-1">
                         <div class="calculated-output final text-green-600" id="final-price-display-desktop-${id}">
                             ₹${discountedPrice.toFixed(2)}
                         </div>
                     </div>
 
-                    <!-- 9. Remove Button (Mobile/Desktop Column 9) -->
+                    <!-- 9. Remove Button (Mobile/Desktop Column 10) -->
                     <div class="md:col-span-1 flex justify-end md:justify-center">
                         <button
                             data-id="${id}"
                             class="remove-product-btn text-red-500 hover:text-red-700 p-2 rounded-full transition duration-150"
                             aria-label="Remove Product"
-                            onclick="removeProduct(${id})"
+                            onclick="removeProduct('${id}')"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -521,7 +576,7 @@
         }
 
         /**
-         * Calculates and updates the overall totals summary, including Global Tax (NEW).
+         * Calculates and updates the overall totals summary, including Global Tax.
          */
         function updateGrandTotals() {
             let totalSubtotal = 0;
@@ -540,7 +595,7 @@
                 totalDiscountPercentage = (totalDiscount / totalSubtotal) * 100;
             }
 
-            // 2. Calculate Tax (NEW)
+            // 2. Calculate Tax
             const taxRate = globalTaxRate / 100;
             const taxAmount = netPayableAmount * taxRate;
             const grandTotal = netPayableAmount + taxAmount;
@@ -591,33 +646,91 @@
             updateGrandTotals();
         }
         
-        // --- Local Storage Functions (unchanged for now) ---
-
+        // --- Quote Management Functions (Updated for Modal) ---
+        
         /**
-         * Retrieves all quote names from local storage and updates the datalist.
+         * Retrieves all quote keys from local storage.
          */
-        function updateDatalist() {
-            savedQuotesDatalistEl.innerHTML = '';
-            // Get all keys from localStorage
+        function getAllQuoteKeys() {
+            const keys = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key.startsWith('quote_')) {
-                    const quoteName = key.substring(6); // Remove 'quote_' prefix
-                    const option = document.createElement('option');
-                    option.value = quoteName;
-                    savedQuotesDatalistEl.appendChild(option);
+                    keys.push(key.substring(6)); // Return the name only
                 }
             }
-            updateDeleteButtonState(currentQuoteName);
+            return keys.sort();
         }
+        
+        /**
+         * Opens the Quote History Modal and renders the list.
+         */
+        function openHistoryModal() {
+            historyModalEl.classList.add('open');
+            historyModalEl.style.display = 'flex';
+            renderHistoryList();
+        }
+
+        /**
+         * Closes the Quote History Modal.
+         */
+        function closeHistoryModal() {
+            historyModalEl.classList.remove('open');
+            setTimeout(() => {
+                historyModalEl.style.display = 'none';
+            }, 200);
+        }
+        
+        /**
+         * Renders the list of saved quotes inside the modal.
+         */
+        function renderHistoryList() {
+            const savedQuoteNames = getAllQuoteKeys();
+            const searchTerm = historySearchInputEl.value.toLowerCase().trim();
+            
+            const filteredNames = savedQuoteNames.filter(name => 
+                name.toLowerCase().includes(searchTerm)
+            );
+
+            historyListEl.innerHTML = '';
+            
+            if (filteredNames.length === 0) {
+                historyEmptyStateEl.textContent = searchTerm ? "No quotes match your search." : "No saved quotes found.";
+                historyEmptyStateEl.classList.remove('hidden');
+                return;
+            } else {
+                historyEmptyStateEl.classList.add('hidden');
+            }
+
+            filteredNames.forEach(name => {
+                const quoteEl = document.createElement('div');
+                quoteEl.className = 'flex justify-between items-center p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition duration-150 shadow-sm';
+                quoteEl.innerHTML = `
+                    <span class="font-medium text-gray-800 truncate">${name}</span>
+                    <div class="flex space-x-2 flex-shrink-0">
+                        <button onclick="loadQuoteLocally('${name}'); closeHistoryModal();" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold py-1 px-3 rounded-md transition duration-150">
+                            Load
+                        </button>
+                        <button onclick="deleteQuoteLocally('${name}')" class="text-red-500 hover:text-red-700 p-1 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                historyListEl.appendChild(quoteEl);
+            });
+        }
+
 
         /**
          * Saves the current product list to local storage under the currentQuoteName.
          */
         function saveQuoteLocally() {
-            const quoteName = quoteNameInputEl.value.trim();
+            const quoteName = currentQuoteName.trim();
             if (!quoteName) {
-                showMessage("Please enter a name for the price quote.", 'error');
+                showMessage("Please enter a name for the price quote in the input field above.", 'error');
+                quoteNameInputEl.focus();
                 return;
             }
             
@@ -638,17 +751,14 @@
                         units: p.units,
                         discountType: p.discountType,
                         discountValue: p.discountValue,
+                        // UUIDs (id) are not stored as they are regenerated on load to ensure no conflict
                     }))
                 };
 
                 localStorage.setItem(`quote_${quoteName}`, JSON.stringify(dataToSave));
                 
-                currentQuoteName = quoteName;
-                updateDatalist();
-                updateDeleteButtonState(quoteName);
-                
-                clearQuote(); 
                 showMessage(`Quote "${quoteName}" saved successfully!`, 'success');
+                clearQuote(); // Clear the screen after save as per previous behavior
 
             } catch (e) {
                 showMessage("Could not save quote. Local storage might be full or unavailable.", 'error');
@@ -666,27 +776,30 @@
             try {
                 const loadedData = JSON.parse(data);
                 
-                // Load global tax rate (NEW)
+                // Load global tax rate
                 globalTaxRate = parseFloat(loadedData.taxRate) || 0;
                 globalTaxInputEl.value = globalTaxRate.toFixed(1);
                 
                 const loadedProducts = loadedData.products;
                 products = [];
-                nextProductId = 1;
 
                 loadedProducts.forEach(p => {
                     const newProduct = {
-                        id: nextProductId++,
+                        // Use UUID for the loaded product
+                        id: crypto.randomUUID(), 
                         ...p,
                         subtotal: 0,
                         discountAmount: 0,
                         discountPercentage: 0,
                         discountedPrice: 0,
-                        isValid: true, // Reset validity on load
+                        isValid: true, 
                     };
                     products.push(newProduct);
                     calculateProductTotal(newProduct.id); 
                 });
+                
+                currentQuoteName = quoteName;
+                quoteNameInputEl.value = quoteName;
                 
                 updateUI();
                 showMessage(`Quote "${quoteName}" loaded successfully!`, 'info');
@@ -701,9 +814,10 @@
 
         /**
          * Deletes a quote from local storage.
+         * @param {string} name - The name of the quote to delete.
          */
-        function deleteQuoteLocally() {
-            const quoteName = quoteNameInputEl.value.trim();
+        function deleteQuoteLocally(name) {
+            const quoteName = name.trim();
             if (!quoteName) return;
 
             try {
@@ -712,19 +826,15 @@
                     
                     showMessage(`Quote "${quoteName}" deleted.`, 'success');
                     
-                    // Reset global state
-                    globalTaxRate = 0;
-                    globalTaxInputEl.value = 0;
+                    // If the deleted quote was the one currently on screen, clear the screen
+                    if (currentQuoteName === quoteName) {
+                        clearQuote();
+                    }
                     
-                    // Clear the current display
-                    products = [];
-                    nextProductId = 1; 
-                    quoteNameInputEl.value = '';
-                    currentQuoteName = '';
-                    updateDatalist();
-                    updateDeleteButtonState('');
-
-                    addProduct(true); // Start a new default product with 0 price
+                    // Re-render history list if modal is open
+                    if (historyModalEl.classList.contains('open')) {
+                        renderHistoryList();
+                    }
 
                 } else {
                     showMessage(`Quote "${quoteName}" not found.`, 'error');
@@ -736,58 +846,38 @@
         }
 
         /**
+         * Sets the current quote name from user input.
+         */
+        function setCurrentQuoteName(name) {
+            currentQuoteName = name.trim();
+        }
+
+        /**
          * Resets the current quote, clearing the product list and input field.
          */
         function clearQuote() {
             products = [];
-            nextProductId = 1; 
-            quoteNameInputEl.value = '';
             currentQuoteName = '';
+            quoteNameInputEl.value = '';
             
             // Reset global tax rate
             globalTaxRate = 0;
             globalTaxInputEl.value = 0;
             
-            updateDeleteButtonState('');
-            
+            // Do not show the message if it's called internally after a save/delete
             if (event && event.currentTarget.id === 'clear-quote-btn') {
                  showMessage("Quote cleared. Ready for a new quote!", 'info');
             }
             addProduct(true); 
         }
         
-        /**
-         * Handles input/change on the quote name field for loading and enabling deletion.
-         */
-        function handleQuoteNameChange(name) {
-            const trimmedName = name.trim();
-            currentQuoteName = trimmedName;
-
-            const isSaved = localStorage.getItem(`quote_${trimmedName}`) !== null;
-            
-            if (isSaved) {
-                loadQuoteLocally(trimmedName);
-            } 
-            
-            updateDeleteButtonState(trimmedName);
-        }
-
-        /**
-         * Toggles the delete button state based on whether the quote name exists locally.
-         */
-        function updateDeleteButtonState(name) {
-            const isSaved = localStorage.getItem(`quote_${name}`) !== null && name.length > 0;
-            deleteQuoteBtnEl.disabled = !isSaved;
-            deleteQuoteBtnEl.classList.toggle('opacity-50', !isSaved);
-            deleteQuoteBtnEl.classList.toggle('hover:bg-red-600', isSaved);
-        }
-
         // --- Core UI Functions ---
 
         /**
          * Re-renders the entire product list (ONLY used on ADD or REMOVE product or discount type change).
          */
         function updateUI() {
+            // Map products to HTML, passing the index for product numbering (NEW)
             productListEl.innerHTML = products.map(renderProductRow).join('');
             
             products.forEach(p => calculateProductTotal(p.id)); 
@@ -796,11 +886,12 @@
         }
 
         /**
-         * Centralized handler for all product input changes, including validation (NEW).
+         * Centralized handler for all product input changes, including validation.
          */
         function handleInput(event) {
             const input = event.target;
-            const id = parseInt(input.dataset.id);
+            // UUIDs are strings, so no parseInt needed here (NEW)
+            const id = input.dataset.id; 
             const field = input.dataset.field;
             const product = products.find(p => p.id === id);
 
@@ -859,15 +950,16 @@
 
         /**
          * Adds a new product row to the list.
-         * @param {boolean} [startEmpty=false] - If true, sets initial name/price to 0 and name to 'Product 1'.
+         * @param {boolean} [startEmpty=false] - If true, starts a blank quote.
          */
         function addProduct(startEmpty = false) {
             const initialPrice = 0.00; 
             const initialDiscount = 0;
             
             const newProduct = {
-                id: nextProductId++,
-                name: `Product ${nextProductId-1}`,
+                // Use a proper UUID (Universally Unique Identifier) (NEW)
+                id: crypto.randomUUID(), 
+                name: `Product ${products.length + 1}`,
                 unitPrice: initialPrice,
                 units: 1,
                 discountType: 'percentage',
@@ -876,7 +968,7 @@
                 discountAmount: 0,
                 discountPercentage: 0,
                 discountedPrice: 0,
-                isValid: true, // New property for validation state
+                isValid: true, 
             };
             products.push(newProduct);
             calculateProductTotal(newProduct.id);
@@ -904,7 +996,6 @@
             products = products.filter(p => p.id !== id);
             // If all products are deleted, start a new blank one
             if (products.length === 0) {
-                nextProductId = 1; // Reset ID counter when all are gone
                 addProduct(true);
             } else {
                 updateUI();
@@ -917,10 +1008,11 @@
             const totals = updateGrandTotals(); 
             const productDetails = products.map((product, index) => {
                 const formatPrice = (value) => value.toFixed(2);
+                const productNumber = index + 1;
 
                 // Use * for bold and _ for italics in WhatsApp markdown
                 return `
-${index + 1}. *${product.name || 'Untitled Product'}*
+*${productNumber}. ${product.name || 'Untitled Product'}*
     Unit Price: ₹${formatPrice(product.unitPrice)}
     Units: ${product.units}
     Subtotal: ₹${formatPrice(product.subtotal)}
@@ -930,7 +1022,7 @@ ${index + 1}. *${product.name || 'Untitled Product'}*
 
             const summary = `
 *💰 PRICE QUOTE SUMMARY*
-_Prepared using Discount Calculator Pro_
+${currentQuoteName ? `*Quote:* ${currentQuoteName}\n` : ''}_Prepared using Discount Calculator Pro_
 
 *--- PRODUCT DETAILS ---*
 ${productDetails}
@@ -947,16 +1039,21 @@ Tax Applied (${globalTaxRate.toFixed(1)}%): *+₹${totals.taxAmount.toFixed(2)}*
         
         function shareToWhatsapp() {
             const encodedText = encodeURIComponent(generateWhatsappSummaryText());
-            const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+            // Use window.location.host as a fallback if window.location.origin is empty
+            const appLink = `\n\nGenerated with: ${window.location.origin || window.location.host}`;
+            const whatsappUrl = `https://wa.me/?text=${encodedText}${encodeURIComponent(appLink)}`;
             window.open(whatsappUrl, '_blank');
         }
 
         function copyToClipboard() {
             const summaryText = generateWhatsappSummaryText(); 
             const copyButton = document.getElementById('copy-quote-btn');
+            
+            // Include a subtle reference to the app in the copied text for sharing context
+            const fullTextToCopy = summaryText + `\n\nGenerated with Discount Calculator Pro.`;
 
             const tempTextArea = document.createElement('textarea');
-            tempTextArea.value = summaryText;
+            tempTextArea.value = fullTextToCopy;
             tempTextArea.style.position = 'fixed';
             tempTextArea.style.top = '0';
             tempTextArea.style.left = '0';
@@ -993,9 +1090,7 @@ Tax Applied (${globalTaxRate.toFixed(1)}%): *+₹${totals.taxAmount.toFixed(2)}*
 
         // --- Initialization ---
         window.onload = function() {
-            updateDatalist(); // Load available quote names
-            
-            // Check if tax rate is saved and load it, otherwise use default
+            // Load tax rate
             const savedTax = localStorage.getItem('globalTaxRate');
             if (savedTax !== null) {
                 globalTaxRate = parseFloat(savedTax) || 0;
@@ -1004,10 +1099,11 @@ Tax Applied (${globalTaxRate.toFixed(1)}%): *+₹${totals.taxAmount.toFixed(2)}*
                 globalTaxRate = 0;
             }
 
+            // Start with one product if the list is empty
             if (products.length === 0) {
                  addProduct(true); 
             } else {
-                updateUI(); // Ensure totals are calculated on initial load
+                updateUI(); 
             }
         }
     </script>
