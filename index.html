@@ -276,7 +276,7 @@
                 <button id="share-whatsapp-btn" onclick="shareToWhatsapp()" class="w-full sm:w-1/2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl transition duration-200 shadow-lg flex items-center justify-center space-x-2 mobile-action-button">
                     <!-- WhatsApp Icon (inline SVG for portability) -->
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="text-white">
-                        <path d="M12.03 2.01c-5.5 0-9.98 4.48-9.98 9.98 0 1.94.57 3.82 1.63 5.42l-1.63 5.96 6.13-1.6c1.55.84 3.32 1.28 5.12 1.28 5.5 0 9.98-4.48 9.98-9.98s-4.48-9.98-9.98-9.98zm4.73 13.92c-.22.56-.99.93-1.42 1.05-.4.11-.84.17-1.29.17-1.35 0-2.65-.5-3.64-1.32-.98-.82-1.74-2.13-1.74-3.48 0-.91.24-1.66.7-2.31.47-.64 1.15-1.07 1.94-1.25.79-.18 1.63-.08 2.37.52.75.6 1.17 1.48 1.17 2.44 0 .22-.04.42-.1.62-.07.2-.18.39-.34.56-.16.17-.35.3-.56.4-.2.11-.42.17-.65.17-.03 0-.05 0-.08 0l-.13-.02c-.52-.08-1.03-.3-1.5-.66-.47-.36-.88-.84-1.23-1.44-.06-.11-.11-.23-.15-.36-.04-.13-.05-.26-.05-.4 0-.32.13-.62.36-.85.23-.23.53-.36.85-.36.24 0 .47.05.69.15.22.1.42.25.58.44.17.2.26.43.26.69 0 .16-.03.32-.08.47-.05.15-.12.29-.2.43-.19.3-.43.56-.7.77l-.02.02c.48.37 1.03.66 1.62.86.6.2 1.24.29 1.9.29.13 0 .26-.01.39-.03.74-.12 1.34-.5 1.8-1.14.47-.64.7-1.4.7-2.28 0-.82-.26-1.5-.77-2.04-.51-.55-1.22-.84-2.12-.84h-1.5c-.32 0-.62-.13-.85-.36-.23-.23-.53-.36-.85-.36 0-.32.13-.62.36-.85.23-.23.53-.36.85-.36h1.5c.9 0 1.76.27 2.47.81.71.54 1.1 1.25 1.1 2.08 0 .5-.08.98-.24 1.44-.16.46-.37.88-.63 1.26z"/>
+                        <path d="M12.03 2.01c-5.5 0-9.98 4.48-9.98 9.98 0 1.94.57 3.82 1.63 5.42l-1.63 5.96 6.13-1.6c1.55.84 3.32 1.28 5.12 1.28 5.5 0 9.98-4.48 9.98-9.98s-4.48-9.98-9.98-9.98zm4.73 13.92c-.22.56-.99.93-1.42 1.05-.4.11-.84.17-1.29.17-1.35 0-2.65-.5-3.64-1.32-.98-.82-1.74-2.13-1.74-3.48 0-.91.24-1.66.7-2.31.47-.64 1.15-1.07 1.94-1.25.79-.18 1.63-.08 2.37.52.75.6 1.17 1.48 1.17 2.44 0 .22-.04.42-.1.62-.07.2-.18.39-.34.56-.16.17-.35.3-.56.4-.2.11-.42.17-.65.17-.03 0-.05 0-.08 0l-.13-.02c-.52-.08-1.03-.3-1.5-.66-.47-.36-.88-.84-1.23-1.44-.06-.11-.11-.23-.15-.36-.04-.13-.05-.26-.05-.4 0-.32.13-.62.36-.85.23-.23.53-.36.85-.36.24 0 .47.05.69.15.22.1.42.25.58.44.17.2.26.43.26.69 0 .16-.03.32-.08.47-.05.15-.12.29-.2.43-.19.3-.43.56-.7.77l-.02.02c.48.37 1.03.66 1.62.86.6.2 1.24.29 1.9.29.13 0 .26-.01.39-.03.74-.12 1.34-.5 1.8-1.14.47-.64.7-1.4.7-2.28 0-.82-.26-1.5-.77-2.04-.51-.55-1.22-.84-2.12-.84h-1.5c-.32 0-.62-.13-.85-.36-.23-.23.53-.36.85-.36 0-.32.13-.62.36-.85.23-.23.53-.36.85-.36h1.5c.9 0 1.76.27 2.47.81.71.54 1.1 1.25 1.1 2.08 0 .5-.08.98-.24 1.44-.16.46-.37.88-.63 1.26z"/>
                     </svg>
                     <span>Share via WhatsApp</span>
                 </button>
@@ -353,6 +353,7 @@
         const historySearchInputEl = document.getElementById('history-search-input');
         const historyEmptyStateEl = document.getElementById('history-empty-state');
         const saveTextEl = document.getElementById('save-text');
+        const historyListEl = document.getElementById('history-list');
         
         // Header elements that need currency update
         const headerElements = [
@@ -653,7 +654,15 @@
             }
 
             updateProductDisplay(id); 
-            updateGrandTotals();
+            // We do NOT call updateGrandTotals here to avoid multiple calls during bulk updates.
+            // It will be called by updateUI or explicitly before sharing.
+        }
+
+        // FIX: Function to force recalculation of all product totals
+        function recalculateAllProducts() {
+            // This ensures the 'products' array state is fully up-to-date
+            // with all derived values (subtotal, discountAmount, discountedPrice).
+            products.forEach(p => calculateProductTotal(p.id));
         }
 
         function updateGrandTotals() {
@@ -753,9 +762,9 @@
 
         function updateUI() {
             productListEl.innerHTML = products.map(renderProductRow).join('');
-            products.forEach(p => calculateProductTotal(p.id)); 
+            recalculateAllProducts(); // CRITICAL: Ensure products state is calculated after rendering, before summing totals
             updateGrandTotals();
-            updateHeaderCurrencyLabels(); // Ensure headers are updated
+            updateHeaderCurrencyLabels();
             
             // Update save button text based on whether a saved quote is loaded
             if (currentQuoteId) {
@@ -829,6 +838,7 @@
 
 
             calculateProductTotal(id);
+            updateGrandTotals(); // Update totals after every single product input change
         }
 
         function addProduct(startEmpty = false) {
@@ -1006,9 +1016,8 @@
                 localStorage.setItem(QUOTE_HISTORY_KEY, JSON.stringify(history));
                 showMessage(`Quote "${quoteName}" ${action} successfully!`, 'success');
                 
-                // --- MODIFICATION START: Clear all fields after saving ---
+                // Clear all fields after saving
                 clearQuote(false); 
-                // --- MODIFICATION END ---
 
             } catch (e) {
                 showMessage(`Error saving quote: Local storage limit reached?`, 'error');
@@ -1016,21 +1025,30 @@
             }
         }
 
-        function loadQuoteFromLocalStorage(quoteData) {
+        // Updated to use ID for lookup, making HTML generation simpler and more robust
+        function loadQuoteFromLocalStorage(quoteId) {
+            const history = getQuoteHistory();
+            const quoteData = history.find(q => q.id === quoteId);
+
+            if (!quoteData) {
+                showMessage("Error: Quote not found in history. It may have been deleted.", 'error');
+                renderHistoryList(); // Refresh list
+                return;
+            }
             
             // Set current quote metadata
             currentQuoteName = quoteData.name;
             currentQuoteId = quoteData.id;
-            currentMemo = quoteData.memo || ''; // New: Load memo
+            currentMemo = quoteData.memo || ''; 
             quoteNameInputEl.value = quoteData.name;
-            quoteMemoInputEl.value = currentMemo; // New: Populate memo input
+            quoteMemoInputEl.value = currentMemo; 
             
             // Load global tax rate
             globalTaxRate = parseFloat(quoteData.taxRate) || 0;
             globalTaxInputEl.value = globalTaxRate.toFixed(1);
             localStorage.setItem('globalTaxRate', globalTaxRate);
             
-            // New: Load currency
+            // Load currency
             currentCurrency = quoteData.currency || '₹';
             currencySelectEl.value = currentCurrency;
             localStorage.setItem('currentCurrency', currentCurrency);
@@ -1058,16 +1076,20 @@
             closeHistoryModal();
         }
 
-        function deleteQuoteFromLocalStorage(id, name) {
+        // Updated to use ID for lookup, making HTML generation simpler and more robust
+        function deleteQuoteFromLocalStorage(quoteId) {
             let history = getQuoteHistory();
-            history = history.filter(q => q.id !== id);
+            const quoteToDelete = history.find(q => q.id === quoteId);
+            const name = quoteToDelete ? quoteToDelete.name : "Untitled Quote";
+
+            history = history.filter(q => q.id !== quoteId);
             
             try {
                 localStorage.setItem(QUOTE_HISTORY_KEY, JSON.stringify(history));
                 showMessage(`Quote "${name}" deleted.`, 'success');
                 
-                if (currentQuoteId === id) {
-                    clearQuote(false); // Clear quote, but don't show message
+                if (currentQuoteId === quoteId) {
+                    clearQuote(false); // Clear quote if it was the one currently loaded
                 }
 
                 renderHistoryList(); // Re-render the history modal immediately
@@ -1124,9 +1146,7 @@
                 const currencySymbol = quote.currency || '₹';
                 const hasMemo = quote.memo && quote.memo.trim().length > 0;
 
-                // To pass the object to loadQuoteFromLocalStorage, we must stringify it and escape single quotes within the string.
-                const quoteJson = JSON.stringify(quote).replace(/'/g, "&#39;");
-
+                // IMPORTANT FIX: Passing only the simple ID string for robustness
                 quoteEl.innerHTML = `
                     <div class="flex flex-col truncate pr-2">
                         <span class="font-bold text-gray-800 truncate">${quote.name}</span>
@@ -1134,10 +1154,10 @@
                         <span class="text-xs text-gray-500">Updated: ${timeString}</span>
                     </div>
                     <div class="flex space-x-2 flex-shrink-0">
-                        <button onclick='loadQuoteFromLocalStorage(${quoteJson})' class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold py-1 px-3 rounded-md transition duration-150 shadow-sm">
+                        <button onclick="loadQuoteFromLocalStorage('${quote.id}')" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold py-1 px-3 rounded-md transition duration-150 shadow-sm">
                             Load
                         </button>
-                        <button onclick="deleteQuoteFromLocalStorage('${quote.id}', '${quote.name.replace(/'/g, "\\'")}')" class="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50">
+                        <button onclick="deleteQuoteFromLocalStorage('${quote.id}')" class="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
@@ -1180,13 +1200,15 @@
         // --- Copy/Share Functions ---
         
         function generateWhatsappSummaryText() {
+            // BUG FIX: Ensure all products are calculated and state is fresh 
+            // before generating the summary text from the 'products' state.
+            recalculateAllProducts(); 
             const totals = updateGrandTotals(); 
             const format = (value) => `${currentCurrency}${value.toFixed(2)}`;
             
             const memoText = currentMemo.trim();
-            const memoSection = memoText ? `
-*--- MEMO ---*
-${memoText}` : '';
+            // NEW FIX: Move memo section to the end of the summary text
+            const memoSection = memoText ? `\n\n*--- MEMO ---*\n${memoText}` : '';
             
             const productDetails = products.map((product, index) => {
                 const productNumber = index + 1;
@@ -1207,7 +1229,6 @@ ${currentQuoteName ? `*Quote Name:* ${currentQuoteName}\n` : ''}_Currency: ${cur
 
 *--- PRODUCT DETAILS ---*
 ${productDetails}
-${memoSection}
 
 *--- GRAND TOTAL ---*
 
@@ -1215,13 +1236,13 @@ Total Subtotal: *${format(totals.totalSubtotal)}*
 Total Savings: *-${format(totals.totalDiscount)}*
 Net Amount (Before Tax): *${format(totals.netPayableAmount)}*
 Tax Applied (${totals.globalTaxRate.toFixed(1)}%): *+${format(totals.taxAmount)}*
-*NET PAYABLE AMOUNT (INCL. TAX): ${format(totals.grandTotal)}*`;
+*NET PAYABLE AMOUNT (INCL. TAX): ${format(totals.grandTotal)}*${memoSection}`; // Memo section placed at the end of the main summary text
             return summary.trim();
         }
         
         function shareToWhatsapp() {
             const encodedText = encodeURIComponent(generateWhatsappSummaryText());
-            const appLink = `\n\nGenerated with: ${window.location.origin || window.location.host}`;
+            const appLink = `\n\nGenerated with Discount Calculator Pro.`;
             const whatsappUrl = `https://wa.me/?text=${encodedText}${encodeURIComponent(appLink)}`;
             window.open(whatsappUrl, '_blank');
         }
