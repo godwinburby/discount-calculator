@@ -27,6 +27,11 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
             outline: none;
         }
+        /* Custom class for validation error */
+        .input-error {
+            border-color: #ef4444 !important; /* Red-500 */
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+        }
 
         /* Desktop-specific styles for product row to enable tabular view */
         @media (min-width: 768px) {
@@ -60,7 +65,7 @@
     <div class="max-w-7xl mx-auto"> 
         <header class="text-center mb-6">
             <h1 class="text-3xl font-bold text-gray-800">Discount Calculator Pro</h1>
-            <p class="text-gray-500">Manage multiple products and complex discounts easily with local quote storage.</p>
+            <p class="text-gray-500">Manage multiple products, complex discounts, and calculate tax.</p>
         </header>
 
         <main class="bg-white p-6 rounded-xl container-card space-y-6">
@@ -99,7 +104,25 @@
                         🗑️ Delete Quote
                     </button>
                 </div>
-                <p id="local-storage-message" class="text-sm text-center text-gray-500 hidden">Quote loaded successfully.</p>
+            </div>
+
+            <!-- Global Tax Input (NEW) -->
+            <div class="mb-6 max-w-sm mx-auto p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <label for="global-tax-input" class="block text-sm font-medium text-gray-700 mb-2">
+                    Global Sales Tax / GST (%)
+                </label>
+                <div class="flex items-center space-x-2">
+                    <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        id="global-tax-input"
+                        value="0"
+                        class="input-field w-full text-lg font-medium text-center"
+                        oninput="handleGlobalTaxInput(event)"
+                    />
+                    <span class="text-xl font-bold text-gray-600">%</span>
+                </div>
             </div>
 
             <!-- Product List Header (Desktop Only - 9 Columns) -->
@@ -143,13 +166,18 @@
                     </div>
 
                     <div class="flex justify-between text-base">
-                        <span class="text-gray-600">Total Discount Percentage:</span>
-                        <span id="total-discount-percentage" class="font-medium text-red-500">0.00%</span>
+                        <span class="text-gray-600">Net Payable Amount (before Tax):</span>
+                        <span id="net-payable-amount" class="font-medium text-indigo-500">₹0.00</span>
                     </div>
 
-                    <div class="flex justify-between text-xl font-bold pt-2 border-t border-gray-200">
-                        <span class="text-gray-800">Grand Total:</span>
-                        <span id="grand-total" class="text-indigo-600">₹0.00</span>
+                    <div class="flex justify-between text-base border-t pt-2">
+                        <span class="text-gray-600">Tax (${0}%):</span>
+                        <span id="tax-amount" class="font-medium text-gray-800">₹0.00</span>
+                    </div>
+
+                    <div class="flex justify-between text-xl font-bold pt-2 border-t border-gray-400">
+                        <span class="text-gray-800">Grand Total (Inclusive of Tax):</span>
+                        <span id="grand-total" class="text-green-600">₹0.00</span>
                     </div>
                 </div>
             </div>
@@ -189,6 +217,9 @@
         // Product state array
         let products = [];
         let nextProductId = 1;
+        
+        // GLOBAL STATE FOR TAX (NEW)
+        let globalTaxRate = 0; // Default 0%
 
         // Quote Management state
         let currentQuoteName = '';
@@ -196,8 +227,10 @@
         const productListEl = document.getElementById('product-list');
         const totalSubtotalEl = document.getElementById('total-subtotal');
         const totalDiscountEl = document.getElementById('total-discount');
+        const netPayableEl = document.getElementById('net-payable-amount');
+        const taxAmountEl = document.getElementById('tax-amount');
         const grandTotalEl = document.getElementById('grand-total');
-        const totalDiscountPercentageEl = document.getElementById('total-discount-percentage');
+        const globalTaxInputEl = document.getElementById('global-tax-input');
         
         const quoteNameInputEl = document.getElementById('quote-name-input');
         const savedQuotesDatalistEl = document.getElementById('saved-quotes');
@@ -211,7 +244,8 @@
             const colors = {
                 success: 'bg-green-600',
                 error: 'bg-red-600',
-                info: 'bg-blue-600'
+                info: 'bg-blue-600',
+                warning: 'bg-yellow-600'
             };
             
             messageBoxEl.textContent = message;
@@ -243,8 +277,11 @@
          * Generates the HTML string for a single product row.
          */
         function renderProductRow(product) {
-            const { id, name, unitPrice, units, discountType, discountValue, subtotal, discountedPrice, discountAmount, discountPercentage } = product;
+            const { id, name, unitPrice, units, discountType, discountValue, subtotal, discountedPrice, discountAmount, discountPercentage, isValid } = product;
             const format = (value) => value.toFixed(2);
+            
+            // Apply error class if product is invalid
+            const errorClass = isValid === false ? 'input-error' : '';
 
             return `
                 <!-- Responsive Product Row Container -->
@@ -278,7 +315,7 @@
                                 value="${unitPrice}"
                                 data-id="${id}"
                                 data-field="unitPrice"
-                                class="input-field w-full product-unit-price-${id}"
+                                class="input-field w-full product-unit-price-${id} ${errorClass}"
                                 oninput="handleInput(event)"
                             />
                         </label>
@@ -295,7 +332,7 @@
                                 value="${units}"
                                 data-id="${id}"
                                 data-field="units"
-                                class="input-field w-full"
+                                class="input-field w-full ${errorClass}"
                                 oninput="handleInput(event)"
                             />
                         </label>
@@ -333,7 +370,7 @@
                                 value="${discountValue}"
                                 data-id="${id}"
                                 data-field="discountValue"
-                                class="input-field w-full text-sm"
+                                class="input-field w-full text-sm ${discountType !== 'final' && errorClass}"
                                 placeholder="${getPlaceholder(discountType)}"
                                 oninput="handleInput(event)"
                                 ${discountType === 'none' ? 'disabled' : ''}
@@ -440,15 +477,14 @@
             if (!product) return;
 
             // 1. Calculate Subtotal
-            product.unitPrice = parseFloat(product.unitPrice) || 0;
-            product.units = parseInt(product.units) || 0;
+            // Note: unitPrice and units are already updated by handleInput and sanitized
             
             product.subtotal = product.unitPrice * product.units;
             let finalPrice = product.subtotal;
             product.discountAmount = 0;
 
             // 2. Apply Discount Logic
-            const discValue = parseFloat(product.discountValue) || 0;
+            const discValue = product.discountValue;
             const subtotal = product.subtotal;
 
             switch (product.discountType) {
@@ -464,6 +500,7 @@
                     finalPrice = subtotal - product.discountAmount;
                     break;
                 case 'final':
+                    // Final price must be between 0 and subtotal
                     finalPrice = Math.max(0, Math.min(discValue, subtotal));
                     product.discountAmount = subtotal - finalPrice;
                     break;
@@ -484,36 +521,77 @@
         }
 
         /**
-         * Calculates and updates the overall totals summary.
+         * Calculates and updates the overall totals summary, including Global Tax (NEW).
          */
         function updateGrandTotals() {
             let totalSubtotal = 0;
             let totalDiscount = 0;
-            let grandTotal = 0;
+            let netPayableAmount = 0;
             let totalDiscountPercentage = 0; 
 
             for (const product of products) {
                 totalSubtotal += product.subtotal;
                 totalDiscount += product.discountAmount;
-                grandTotal += product.discountedPrice;
+                netPayableAmount += product.discountedPrice;
             }
             
+            // 1. Calculate Discount Percentage
             if (totalSubtotal > 0) {
                 totalDiscountPercentage = (totalDiscount / totalSubtotal) * 100;
             }
 
+            // 2. Calculate Tax (NEW)
+            const taxRate = globalTaxRate / 100;
+            const taxAmount = netPayableAmount * taxRate;
+            const grandTotal = netPayableAmount + taxAmount;
+
+
             const format = (value) => `₹${value.toFixed(2)}`;
             const formatPercent = (value) => `${value.toFixed(2)}%`;
 
+            // Update Summary Display
             totalSubtotalEl.textContent = format(totalSubtotal);
             totalDiscountEl.textContent = `-${format(totalDiscount)}`;
-            totalDiscountPercentageEl.textContent = formatPercent(totalDiscountPercentage);
+            netPayableEl.textContent = format(netPayableAmount);
+            taxAmountEl.textContent = format(taxAmount);
+            // Update tax label dynamically
+            document.querySelector('#totals-summary .border-t.pt-2 span:first-child').textContent = `Tax (${globalTaxRate.toFixed(1)}%):`;
             grandTotalEl.textContent = format(grandTotal);
 
-            return { totalSubtotal, totalDiscount, grandTotal, totalDiscountPercentage };
+            return { 
+                totalSubtotal, 
+                totalDiscount, 
+                netPayableAmount, 
+                taxAmount, 
+                grandTotal, 
+                totalDiscountPercentage 
+            };
+        }
+
+        /**
+         * Handles input on the global tax field.
+         */
+        function handleGlobalTaxInput(event) {
+            let value = parseFloat(event.target.value) || 0;
+            
+            // Prevent negative tax rates
+            if (value < 0) {
+                value = 0;
+                event.target.value = 0;
+                showMessage("Tax rate cannot be negative.", 'warning');
+            }
+            // Cap max tax rate
+            if (value > 100) {
+                value = 100;
+                event.target.value = 100;
+                showMessage("Tax rate capped at 100%.", 'warning');
+            }
+
+            globalTaxRate = value;
+            updateGrandTotals();
         }
         
-        // --- Local Storage Functions ---
+        // --- Local Storage Functions (unchanged for now) ---
 
         /**
          * Retrieves all quote names from local storage and updates the datalist.
@@ -523,7 +601,6 @@
             // Get all keys from localStorage
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                // Filter keys to only include quote data (e.g., prefix them)
                 if (key.startsWith('quote_')) {
                     const quoteName = key.substring(6); // Remove 'quote_' prefix
                     const option = document.createElement('option');
@@ -531,7 +608,6 @@
                     savedQuotesDatalistEl.appendChild(option);
                 }
             }
-            // Update delete button state
             updateDeleteButtonState(currentQuoteName);
         }
 
@@ -544,17 +620,26 @@
                 showMessage("Please enter a name for the price quote.", 'error');
                 return;
             }
+            
+            // Prevent saving if any product data is invalid
+            const isAnyInvalid = products.some(p => p.isValid === false);
+            if (isAnyInvalid) {
+                showMessage("Cannot save: Please fix the invalid product inputs (highlighted in red).", 'error');
+                return;
+            }
 
             try {
-                // Prepare data for saving: only save essential product properties
-                const dataToSave = products.map(p => ({
-                    name: p.name,
-                    unitPrice: p.unitPrice,
-                    units: p.units,
-                    discountType: p.discountType,
-                    discountValue: p.discountValue,
-                    // The rest (subtotal, finalPrice) are calculated on load
-                }));
+                // Prepare data for saving: include globalTaxRate
+                const dataToSave = {
+                    taxRate: globalTaxRate,
+                    products: products.map(p => ({
+                        name: p.name,
+                        unitPrice: p.unitPrice,
+                        units: p.units,
+                        discountType: p.discountType,
+                        discountValue: p.discountValue,
+                    }))
+                };
 
                 localStorage.setItem(`quote_${quoteName}`, JSON.stringify(dataToSave));
                 
@@ -562,7 +647,6 @@
                 updateDatalist();
                 updateDeleteButtonState(quoteName);
                 
-                // --- NEW BEHAVIOR: Clear fields after successful save ---
                 clearQuote(); 
                 showMessage(`Quote "${quoteName}" saved successfully!`, 'success');
 
@@ -580,11 +664,16 @@
             if (!data) return false;
 
             try {
-                const loadedProducts = JSON.parse(data);
+                const loadedData = JSON.parse(data);
+                
+                // Load global tax rate (NEW)
+                globalTaxRate = parseFloat(loadedData.taxRate) || 0;
+                globalTaxInputEl.value = globalTaxRate.toFixed(1);
+                
+                const loadedProducts = loadedData.products;
                 products = [];
-                nextProductId = 1; // Reset product IDs when loading a new quote
+                nextProductId = 1;
 
-                // Map loaded data back into the full product structure
                 loadedProducts.forEach(p => {
                     const newProduct = {
                         id: nextProductId++,
@@ -593,9 +682,9 @@
                         discountAmount: 0,
                         discountPercentage: 0,
                         discountedPrice: 0,
+                        isValid: true, // Reset validity on load
                     };
                     products.push(newProduct);
-                    // Recalculate totals for the new products
                     calculateProductTotal(newProduct.id); 
                 });
                 
@@ -623,7 +712,11 @@
                     
                     showMessage(`Quote "${quoteName}" deleted.`, 'success');
                     
-                    // Clear the current display and reset ID counter
+                    // Reset global state
+                    globalTaxRate = 0;
+                    globalTaxInputEl.value = 0;
+                    
+                    // Clear the current display
                     products = [];
                     nextProductId = 1; 
                     quoteNameInputEl.value = '';
@@ -647,16 +740,20 @@
          */
         function clearQuote() {
             products = [];
-            nextProductId = 1; // Reset ID counter
+            nextProductId = 1; 
             quoteNameInputEl.value = '';
             currentQuoteName = '';
+            
+            // Reset global tax rate
+            globalTaxRate = 0;
+            globalTaxInputEl.value = 0;
+            
             updateDeleteButtonState('');
-            // NOTE: showMessage is now called by saveQuoteLocally for save events.
-            // When manually cleared, we show a message too.
+            
             if (event && event.currentTarget.id === 'clear-quote-btn') {
                  showMessage("Quote cleared. Ready for a new quote!", 'info');
             }
-            addProduct(true); // Add a default product starting with 0 price
+            addProduct(true); 
         }
         
         /**
@@ -668,7 +765,6 @@
 
             const isSaved = localStorage.getItem(`quote_${trimmedName}`) !== null;
             
-            // If the user selects a saved quote or finishes typing a saved quote name, load it.
             if (isSaved) {
                 loadQuoteLocally(trimmedName);
             } 
@@ -694,14 +790,13 @@
         function updateUI() {
             productListEl.innerHTML = products.map(renderProductRow).join('');
             
-            // Ensure recalculation runs for all products
             products.forEach(p => calculateProductTotal(p.id)); 
             
             updateGrandTotals();
         }
 
         /**
-         * Centralized handler for all product input changes.
+         * Centralized handler for all product input changes, including validation (NEW).
          */
         function handleInput(event) {
             const input = event.target;
@@ -712,17 +807,51 @@
             if (!product) return;
 
             let value = input.value;
-
+            let isValid = true;
+            let message = '';
+            
+            // 1. Handle value type and basic validation
             if (field === 'name') {
                 product[field] = value;
             } else if (field === 'discountType') {
                 product.discountValue = 0;
                 product.discountType = value;
-                // Re-render the row to update the discount value placeholder
-                updateUI();
+                product.isValid = true; // Reset validity for this product
+                updateUI(); // Re-render to update discount placeholder
                 return; 
             } else {
+                // Numeric fields (unitPrice, units, discountValue)
                 product[field] = parseFloat(value) || 0;
+                
+                // Price & Units must be > 0 (Units must be >= 1)
+                if ((field === 'unitPrice' && product[field] <= 0) || 
+                    (field === 'units' && product[field] < 1)) {
+                    isValid = false;
+                    message = `Product ${field === 'unitPrice' ? 'Price' : 'Units'} must be greater than zero.`;
+                }
+
+                // Discount Value validation (if not final price)
+                if (field === 'discountValue' && product.discountType !== 'final') {
+                    if (product[field] < 0) {
+                        isValid = false;
+                        message = "Discount value cannot be negative.";
+                    }
+                    if (product.discountType === 'percentage' && product[field] > 100) {
+                        isValid = false;
+                        message = "Percentage discount cannot exceed 100%.";
+                    }
+                }
+            }
+
+            // 2. Update UI based on validation result
+            product.isValid = isValid;
+
+            if (isValid) {
+                input.classList.remove('input-error');
+            } else {
+                input.classList.add('input-error');
+                // Only show persistent error messages if they are currently invalid
+                showMessage(message, 'warning');
             }
 
             calculateProductTotal(id);
@@ -733,7 +862,6 @@
          * @param {boolean} [startEmpty=false] - If true, sets initial name/price to 0 and name to 'Product 1'.
          */
         function addProduct(startEmpty = false) {
-            // Always set initial price to 0.00 as requested
             const initialPrice = 0.00; 
             const initialDiscount = 0;
             
@@ -748,6 +876,7 @@
                 discountAmount: 0,
                 discountPercentage: 0,
                 discountedPrice: 0,
+                isValid: true, // New property for validation state
             };
             products.push(newProduct);
             calculateProductTotal(newProduct.id);
@@ -782,13 +911,12 @@
             }
         }
 
-        // --- Copy/Share Functions (Modified generatePlainTextQuote usage) ---
+        // --- Copy/Share Functions ---
         
         function generateWhatsappSummaryText() {
             const totals = updateGrandTotals(); 
             const productDetails = products.map((product, index) => {
                 const formatPrice = (value) => value.toFixed(2);
-                const formatPercent = (value) => value.toFixed(2);
 
                 // Use * for bold and _ for italics in WhatsApp markdown
                 return `
@@ -796,9 +924,7 @@ ${index + 1}. *${product.name || 'Untitled Product'}*
     Unit Price: ₹${formatPrice(product.unitPrice)}
     Units: ${product.units}
     Subtotal: ₹${formatPrice(product.subtotal)}
-    _Discount Applied:_
-    Amount: *-₹${formatPrice(product.discountAmount)}*
-    Percentage: *${formatPercent(product.discountPercentage)}%*
+    _Discount Applied:_ -₹${formatPrice(product.discountAmount)} (${product.discountPercentage.toFixed(2)}%)
     *Product Final Price: ₹${formatPrice(product.discountedPrice)}*`; 
             }).join('\n');
 
@@ -813,46 +939,12 @@ ${productDetails}
 
 Total Subtotal: *₹${totals.totalSubtotal.toFixed(2)}*
 Total Savings: *-₹${totals.totalDiscount.toFixed(2)}*
-*Overall Discount: ${totals.totalDiscountPercentage.toFixed(2)}%*
-*NET PAYABLE AMOUNT: ₹${totals.grandTotal.toFixed(2)}*`;
+Net Amount (Before Tax): *₹${totals.netPayableAmount.toFixed(2)}*
+Tax Applied (${globalTaxRate.toFixed(1)}%): *+₹${totals.taxAmount.toFixed(2)}*
+*NET PAYABLE AMOUNT (INCL. TAX): ₹${totals.grandTotal.toFixed(2)}*`;
             return summary.trim();
         }
         
-        // This function is no longer used for copying, replaced by generateWhatsappSummaryText
-        // but kept for completeness in case it was used elsewhere.
-        function generatePlainTextQuote() {
-            const totals = updateGrandTotals(); 
-            const productDetails = products.map((product, index) => {
-                const formatPrice = (value) => value.toFixed(2);
-                const formatPercent = (value) => value.toFixed(2);
-
-                return `
-${index + 1}. ${product.name || 'Untitled Product'}
-    Unit Price: ₹${formatPrice(product.unitPrice)}
-    Units: ${product.units}
-    Subtotal: ₹${formatPrice(product.subtotal)}
-    Discount Applied:
-    Amount: -₹${formatPrice(product.discountAmount)}
-    Percentage: ${formatPercent(product.discountPercentage)}%
-    Product Final Price: ₹${formatPrice(product.discountedPrice)}`; 
-            }).join('\n');
-
-            const summary = `
-PRICE QUOTE SUMMARY
-Prepared using Discount Calculator Pro
-
---- PRODUCT DETAILS ---
-${productDetails}
-
---- GRAND TOTAL ---
-
-Total Subtotal: ₹${totals.totalSubtotal.toFixed(2)}
-Total Savings: -₹${totals.totalDiscount.toFixed(2)}
-Overall Discount: ${totals.totalDiscountPercentage.toFixed(2)}%
-NET PAYABLE AMOUNT: ₹${totals.grandTotal.toFixed(2)}`;
-            return summary.trim();
-        }
-
         function shareToWhatsapp() {
             const encodedText = encodeURIComponent(generateWhatsappSummaryText());
             const whatsappUrl = `https://wa.me/?text=${encodedText}`;
@@ -860,9 +952,7 @@ NET PAYABLE AMOUNT: ₹${totals.grandTotal.toFixed(2)}`;
         }
 
         function copyToClipboard() {
-            // --- MODIFIED: Use the rich text summary for copying ---
             const summaryText = generateWhatsappSummaryText(); 
-            // --------------------------------------------------------
             const copyButton = document.getElementById('copy-quote-btn');
 
             const tempTextArea = document.createElement('textarea');
@@ -904,10 +994,23 @@ NET PAYABLE AMOUNT: ₹${totals.grandTotal.toFixed(2)}`;
         // --- Initialization ---
         window.onload = function() {
             updateDatalist(); // Load available quote names
+            
+            // Check if tax rate is saved and load it, otherwise use default
+            const savedTax = localStorage.getItem('globalTaxRate');
+            if (savedTax !== null) {
+                globalTaxRate = parseFloat(savedTax) || 0;
+                globalTaxInputEl.value = globalTaxRate.toFixed(1);
+            } else {
+                globalTaxRate = 0;
+            }
+
             if (products.length === 0) {
-                 addProduct(true); // Add a default product starting with 0 price if nothing is present
+                 addProduct(true); 
+            } else {
+                updateUI(); // Ensure totals are calculated on initial load
             }
         }
     </script>
 </body>
 </html>
+
